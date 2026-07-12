@@ -17,10 +17,21 @@ class NeuralSphere {
     this.H      = canvas.height;
     this.cx     = this.W / 2;
     this.cy     = this.H / 2;
+    this.targetCx = this.cx;
+    this.targetCy = this.cy;
     this.R      = 170;
     this.rotation = 0;
     this.nodes  = [];
     this.generateNodes(90);
+
+    window.addEventListener("mousemove", (e) => {
+      const w = window.innerWidth, h = window.innerHeight;
+      const dx = (e.clientX - w/2) / (w/2);
+      const dy = (e.clientY - h/2) / (h/2);
+      this.targetCx = (this.W / 2) - dx * 30;
+      this.targetCy = (this.H / 2) - dy * 30;
+    });
+
     this.animate();
   }
 
@@ -62,6 +73,10 @@ class NeuralSphere {
   draw() {
     const ctx = this.ctx;
     const t   = Date.now() / 1000;
+
+    // smoothly interpolate center
+    this.cx += (this.targetCx - this.cx) * 0.1;
+    this.cy += (this.targetCy - this.cy) * 0.1;
 
     ctx.clearRect(0, 0, this.W, this.H);
 
@@ -219,8 +234,37 @@ function initSearchCycler() {
   let cIdx  = 0;
   let deleting = false;
   let pausing  = false;
+  let isFocused = false;
+
+  input.addEventListener("focus", () => {
+    isFocused = true;
+    input.placeholder = "Ask something...";
+  });
+  input.addEventListener("blur", () => {
+    isFocused = false;
+    if (!input.value) cIdx = 0;
+  });
+
+  input.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      performSearch(input.value);
+    }
+  });
+
+  // click outside to close results
+  document.addEventListener("click", (e) => {
+    const resDiv = document.getElementById("searchResults");
+    if (resDiv && !e.target.closest(".search-wrap")) {
+      resDiv.style.display = "none";
+    }
+  });
 
   function tick() {
+    if (isFocused || input.value) {
+      setTimeout(tick, 500);
+      return;
+    }
+
     const target = queries[qIdx];
     if (pausing) { pausing = false; setTimeout(tick, 1600); return; }
 
@@ -241,6 +285,31 @@ function initSearchCycler() {
   }
 
   setTimeout(tick, 800);
+}
+
+function performSearch(query) {
+  if (!query.trim()) return;
+  const resDiv = document.getElementById("searchResults");
+  const content = document.getElementById("searchContent");
+  resDiv.style.display = "block";
+  content.innerHTML = '<div class="spinner" style="display:inline-block; width:16px; height:16px; margin-right:8px; border-width:2px; vertical-align: middle;"></div> <span style="vertical-align: middle;">Searching...</span>';
+
+  fetch("/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: query })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      content.innerHTML = "<strong style='color:#a5b4fc'>🧠 AI Response:</strong><br><br>" + escHtml(data.answer).replace(/\n/g, "<br>");
+    } else {
+      content.innerHTML = "<span style='color:#ef4444'>❌ " + escHtml(data.error) + "</span>";
+    }
+  })
+  .catch(err => {
+    content.innerHTML = "<span style='color:#ef4444'>Network error: " + err.message + "</span>";
+  });
 }
 
 /* ════════════════════════════════════════════════════════════

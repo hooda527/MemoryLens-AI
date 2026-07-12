@@ -11,6 +11,9 @@ class ExtractionProvider:
     def analyze(self, image_bytes: bytes, mime_type: str, prompt: str) -> dict:
         raise NotImplementedError()
 
+    def chat(self, prompt: str) -> str:
+        raise NotImplementedError()
+
     def test_connection(self) -> bool:
         raise NotImplementedError()
 
@@ -38,6 +41,16 @@ class GeminiProvider(ExtractionProvider):
         data = resp.json()
         raw = data["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(strip_fences(raw))
+
+    def chat(self, prompt: str) -> str:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.5, "maxOutputTokens": 2048}
+        }
+        resp = requests.post(url, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     def test_connection(self) -> bool:
         url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
@@ -68,6 +81,19 @@ class OpenAIProvider(ExtractionProvider):
         resp.raise_for_status()
         raw = resp.json()["choices"][0]["message"]["content"]
         return json.loads(strip_fences(raw))
+
+    def chat(self, prompt: str) -> str:
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.5,
+            "max_tokens": 2048
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
 
     def test_connection(self) -> bool:
         url = "https://api.openai.com/v1/models"
@@ -111,9 +137,24 @@ class ClaudeProvider(ExtractionProvider):
         raw = resp.json()["content"][0]["text"]
         return json.loads(strip_fences(raw))
 
+    def chat(self, prompt: str) -> str:
+        url = "https://api.anthropic.com/v1/messages"
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        }
+        payload = {
+            "model": "claude-3-haiku-20240307",
+            "max_tokens": 2048,
+            "temperature": 0.5,
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()["content"][0]["text"]
+
     def test_connection(self) -> bool:
-        # Anthropic doesn't have a simple models endpoint for API key testing,
-        # so we send a tiny request
         url = "https://api.anthropic.com/v1/messages"
         headers = {
             "x-api-key": self.api_key,
@@ -152,6 +193,19 @@ class GroqProvider(ExtractionProvider):
         raw = resp.json()["choices"][0]["message"]["content"]
         return json.loads(strip_fences(raw))
 
+    def chat(self, prompt: str) -> str:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        payload = {
+            "model": "llama3-8b-8192",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.5,
+            "max_completion_tokens": 2048
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
+
     def test_connection(self) -> bool:
         url = "https://api.groq.com/openai/v1/models"
         headers = {"Authorization": f"Bearer {self.api_key}"}
@@ -165,12 +219,9 @@ class CustomProvider(ExtractionProvider):
             raise ValueError("Base URL required for Custom provider")
         
         b64 = base64.b64encode(image_bytes).decode("utf-8")
-        
-        # Assuming OpenAI compatibility
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            # Let the custom endpoint route to its default model if not provided, or specify a generic placeholder
             "model": "default", 
             "messages": [
                 {
@@ -188,6 +239,22 @@ class CustomProvider(ExtractionProvider):
         resp.raise_for_status()
         raw = resp.json()["choices"][0]["message"]["content"]
         return json.loads(strip_fences(raw))
+
+    def chat(self, prompt: str) -> str:
+        if not self.base_url:
+            raise ValueError("Base URL required for Custom provider")
+        
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        payload = {
+            "model": "default",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.5,
+            "max_tokens": 2048
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        resp.raise_for_status()
+        return resp.json()["choices"][0]["message"]["content"]
 
     def test_connection(self) -> bool:
         if not self.base_url:

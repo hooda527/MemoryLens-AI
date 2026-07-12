@@ -283,5 +283,43 @@ def delete_reminder(reminder_id):
     return jsonify({"success": True})
 
 
+@app.route("/api/search", methods=["POST"])
+def search_documents():
+    provider_name = session.get("ai_provider")
+    api_key = session.get("ai_api_key")
+    base_url = session.get("ai_base_url")
+
+    if not provider_name or not api_key:
+        return jsonify({"success": False, "error": "No AI Provider connected. Please connect one in settings."}), 401
+
+    body = request.get_json(silent=True)
+    query = (body.get("query") or "").strip() if body else ""
+    if not query:
+        return jsonify({"success": False, "error": "Query is empty."}), 400
+
+    reminders = get_all_reminders()
+    if not reminders:
+        return jsonify({"success": True, "answer": "You have no saved documents or reminders yet."})
+
+    context_lines = []
+    for r in reminders:
+        context_lines.append(f"- [{r['document_type']}] {r['document_title']} (Date: {r['reminder_date']}) - Note: {r['note'] or 'None'}")
+    context = "\n".join(context_lines)
+
+    prompt = (
+        f"You are a helpful assistant for MemoryLens AI. The user has the following saved documents/reminders:\n"
+        f"{context}\n\n"
+        f"Based on this information ONLY, answer the user's question. Keep it concise, helpful, and friendly. "
+        f"If the answer isn't in the saved documents, say you don't have that information.\n"
+        f"User Question: {query}"
+    )
+
+    try:
+        provider = get_provider(provider_name, api_key, base_url)
+        answer = provider.chat(prompt)
+        return jsonify({"success": True, "answer": answer})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"AI search failed: {str(e)}"}), 500
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
