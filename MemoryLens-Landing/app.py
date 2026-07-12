@@ -109,6 +109,10 @@ def index():
         connected_provider=connected_provider
     )
 
+@app.route("/hero")
+def hero():
+    return render_template("hero.html")
+
 @app.route("/api/connect", methods=["POST"])
 def connect_provider():
     body = request.get_json(silent=True)

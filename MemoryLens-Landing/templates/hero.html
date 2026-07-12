@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryLens AI — Your AI Document Memory</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   ROOT & RESET
+═══════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:        #03091A;
+  --bg2:       #050D28;
+  --card:      #0A1535;
+  --card2:     #0C1A40;
+  --blue:      #1E6FFF;
+  --blue2:     #3D8BFF;
+  --cyan:      #00C8FF;
+  --purple:    #7B3FF5;
+  --purple2:   #A855F7;
+  --glow-b:    rgba(0,180,255,0.55);
+  --glow-p:    rgba(100,60,240,0.4);
+  --border:    rgba(60,120,255,0.18);
+  --text:      #E2E8F0;
+  --muted:     #64748B;
+  --muted2:    #94A3B8;
+}
+html, body {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+/* Show scrollbar only for the main container */
+body { overflow: hidden; }
+
+/* ═══════════════════════════════════════════
+   BACKGROUND
+═══════════════════════════════════════════ */
+.bg-wrap {
+  position: fixed; inset: 0; z-index: 0; overflow: hidden;
+}
+/* Deep space gradient */
+.bg-wrap::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(10,30,100,0.55) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 15% 80%, rgba(5,15,60,0.4) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 25% at 85% 10%, rgba(60,20,120,0.25) 0%, transparent 60%),
+    linear-gradient(180deg, #030919 0%, #04112B 50%, #030919 100%);
+}
+/* Dot grid */
+.bg-wrap::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(30,111,255,0.18) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 50%, black 30%, transparent 80%);
+}
+
+/* ═══════════════════════════════════════════
+   PAGE LAYOUT
+═══════════════════════════════════════════ */
+.page {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════
+   TOP SEARCH BAR
+═══════════════════════════════════════════ */
+.top-bar {
+  display: flex; align-items: center; justify-content: center;
+  padding: 14px 0 6px;
+  flex-shrink: 0;
+}
+.search-outer {
+  position: relative; width: 440px;
+}
+.search-input {
+  width: 100%;
+  background: rgba(8,20,60,0.85);
+  border: 1px solid rgba(30,111,255,0.35);
+  border-radius: 40px;
+  padding: 12px 46px 12px 20px;
+  font-size: 0.92rem; color: var(--text);
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 0 0 1px rgba(30,111,255,0.08),
+    0 0 30px rgba(30,111,255,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+  caret-color: var(--cyan);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.search-input:focus {
+  border-color: rgba(30,111,255,0.6);
+  box-shadow: 0 0 0 1px rgba(30,111,255,0.15), 0 0 40px rgba(30,111,255,0.18);
+}
+.search-icon-btn {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--muted2); font-size: 1rem;
+  transition: color 0.2s;
+}
+.search-icon-btn:hover { color: var(--cyan); }
+.search-result-pop {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--card2);
+  border: 1px solid rgba(30,111,255,0.25);
+  border-radius: 12px; padding: 14px;
+  font-size: 0.82rem; z-index: 100;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+  display: none;
+}
+
+/* ═══════════════════════════════════════════
+   MAIN 3-COLUMN WORKSPACE
+═══════════════════════════════════════════ */
+.workspace {
+  display: grid;
+  grid-template-columns: 280px 1fr 340px;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+}
+
+/* ═══════════════════════════════════════════
+   LEFT — PHONE + FLYING DOCS
+═══════════════════════════════════════════ */
+.left-col {
+  position: relative;
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Floating document chips above phone */
+.doc-chips {
+  position: absolute; top: 5%; left: 0; right: 0;
+  display: flex; flex-wrap: wrap; gap: 6px;
+  justify-content: center;
+  padding: 0 8px;
+}
+.doc-chip {
+  background: rgba(10,25,65,0.85);
+  border: 1px solid rgba(30,111,255,0.25);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.62rem; font-weight: 600; color: var(--muted2);
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+  animation: chip-float 4s ease-in-out infinite;
+}
+.doc-chip:nth-child(2) { animation-delay: 0.5s; border-color: rgba(123,63,245,0.25); }
+.doc-chip:nth-child(3) { animation-delay: 1s; }
+.doc-chip:nth-child(4) { animation-delay: 1.5s; border-color: rgba(0,200,255,0.22); }
+.doc-chip:nth-child(5) { animation-delay: 2s; }
+
+/* iPhone frame */
+.phone-wrap {
+  position: relative;
+  z-index: 10;
+  margin-top: 20px;
+}
+.iphone {
+  width: 155px; height: 320px;
+  background: linear-gradient(155deg, #1A2B55 0%, #0B1635 50%, #0A1228 100%);
+  border: 2.5px solid rgba(50,100,220,0.5);
+  border-radius: 34px;
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(30,80,200,0.15),
+    0 0 50px rgba(0,140,255,0.18),
+    0 20px 60px rgba(0,0,0,0.6),
+    inset 0 0 20px rgba(0,0,0,0.5);
+  animation: phone-float 6s ease-in-out infinite;
+  perspective: 800px;
+  transform: perspective(900px) rotateY(-5deg) rotateX(3deg);
+}
+/* Dynamic Island */
+.iphone::before {
+  content: '';
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  width: 72px; height: 22px;
+  background: #000; border-radius: 20px; z-index: 5;
+}
+/* Side button */
+.iphone::after {
+  content: '';
+  position: absolute; top: 70px; right: -5px;
+  width: 4px; height: 48px;
+  background: rgba(60,100,200,0.6); border-radius: 2px;
+}
+.iphone-screen {
+  position: absolute; inset: 4px; border-radius: 30px;
+  overflow: hidden; padding: 38px 8px 8px;
+  background: linear-gradient(160deg, #0D1F50, #070E30);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.iphone-screen-label {
+  font-size: 0.5rem; font-weight: 800; color: #3D8BFF;
+  text-align: center; letter-spacing: 0.5px; margin-bottom: 3px;
+}
+.iphone-doc-list { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+.iphone-doc-item {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(30,60,140,0.3);
+  border: 1px solid rgba(30,111,255,0.15);
+  border-radius: 6px; padding: 4px 6px;
+  animation: chip-float 5s ease-in-out infinite;
+}
+.iphone-doc-item:nth-child(2) { animation-delay: 0.6s; border-color: rgba(123,63,245,0.18); background: rgba(70,30,140,0.25); }
+.iphone-doc-item:nth-child(3) { animation-delay: 1.2s; }
+.iphone-doc-item:nth-child(4) { animation-delay: 1.8s; border-color: rgba(0,200,255,0.18); background: rgba(0,80,120,0.25); }
+.iphone-doc-item:nth-child(5) { animation-delay: 2.4s; }
+.iphone-doc-item:nth-child(6) { animation-delay: 3s; border-color: rgba(123,63,245,0.18); background: rgba(60,20,100,0.2); }
+.iphone-doc-emoji { font-size: 0.85rem; flex-shrink: 0; }
+.iphone-doc-text { font-size: 0.46rem; color: #94A3B8; font-weight: 600; line-height: 1.2; }
+.iphone-doc-title { color: #CBD5E1; font-weight: 700; font-size: 0.5rem; }
+.iphone-cta {
+  font-size: 0.48rem; text-align: center; margin-top: 3px;
+  color: rgba(0,200,255,0.7); font-weight: 700;
+  animation: blink-cta 1.8s ease-in-out infinite;
+}
+
+/* Flying documents from phone to brain */
+.flying-docs {
+  position: absolute;
+  inset: 0; pointer-events: none; z-index: 8;
+}
+.fly-doc {
+  position: absolute;
+  background: rgba(10,20,60,0.88);
+  border: 1px solid rgba(30,111,255,0.3);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 0.52rem; color: #94A3B8; font-weight: 600;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  transform-origin: left center;
+}
+.fly-doc:nth-child(1) { top: 18%; right: -15%;  animation: fly1 3.5s ease-in-out infinite; }
+.fly-doc:nth-child(2) { top: 28%; right: -22%;  animation: fly2 4s ease-in-out infinite 0.4s; border-color: rgba(123,63,245,0.3); }
+.fly-doc:nth-child(3) { top: 40%; right: -10%;  animation: fly3 3.8s ease-in-out infinite 0.8s; }
+.fly-doc:nth-child(4) { top: 53%; right: -18%;  animation: fly1 4.2s ease-in-out infinite 1.2s; border-color: rgba(0,200,255,0.25); }
+.fly-doc:nth-child(5) { top: 65%; right: -8%;   animation: fly2 3.6s ease-in-out infinite 1.6s; }
+.fly-doc:nth-child(6) { top: 12%; right: -5%;   animation: fly3 4.4s ease-in-out infinite 2s; border-color: rgba(123,63,245,0.28); }
+.fly-doc:nth-child(7) { top: 75%; right: -20%;  animation: fly1 3.9s ease-in-out infinite 2.4s; }
+
+/* ═══════════════════════════════════════════
+   CENTER — BRAIN PORTAL
+═══════════════════════════════════════════ */
+.center-col {
+  position: relative;
+  height: 100%;
+  display: flex; align-items: center; justify-content: center;
+}
+.brain-scene {
+  position: relative;
+  width: 480px; height: 480px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* SVG connections overlay */
+#connLines {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 5;
+}
+
+/* Brain canvas */
+#brainCanvas {
+  position: absolute; z-index: 4;
+  filter: drop-shadow(0 0 40px rgba(0,160,255,0.6)) drop-shadow(0 0 80px rgba(80,40,200,0.4));
+}
+
+/* Orbital rings — exact match to image */
+.orb-ring {
+  position: absolute; top: 50%; left: 50%;
+  border-radius: 50%; pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* Large front ring */
+.orb-ring-1 {
+  width: 320px; height: 320px;
+  border: 3px solid transparent;
+  background:
+    linear-gradient(var(--bg), var(--bg)) padding-box,
+    linear-gradient(90deg, var(--cyan), var(--blue), var(--purple), var(--cyan)) border-box;
+  animation: ring-spin-1 10s linear infinite;
+  filter: drop-shadow(0 0 12px rgba(0,200,255,0.7));
+  z-index: 6;
+}
+
+/* Tilted rings */
+.orb-ring-2 {
+  width: 300px; height: 110px;
+  border: 2px solid rgba(0,200,255,0.7);
+  filter: drop-shadow(0 0 10px rgba(0,200,255,0.5));
+  animation: ring-spin-2 14s linear infinite;
+  z-index: 7;
+}
+.orb-ring-3 {
+  width: 360px; height: 130px;
+  border: 1.5px solid rgba(123,63,245,0.5);
+  filter: drop-shadow(0 0 8px rgba(123,63,245,0.4));
+  animation: ring-spin-3 20s linear infinite reverse;
+  z-index: 3;
+}
+.orb-ring-4 {
+  width: 420px; height: 150px;
+  border: 1px solid rgba(30,111,255,0.35);
+  filter: drop-shadow(0 0 6px rgba(30,111,255,0.3));
+  animation: ring-spin-2 28s linear infinite;
+  z-index: 2;
+}
+
+/* Glow halo behind sphere */
+.brain-glow-halo {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 380px; height: 380px; border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(0,160,255,0.18) 0%,
+    rgba(80,40,200,0.12) 35%,
+    rgba(0,200,255,0.06) 60%,
+    transparent 75%);
+  pointer-events: none; z-index: 1;
+  animation: halo-pulse 3s ease-in-out infinite;
+}
+
+/* Mini robot figures */
+.mini-robot {
+  position: absolute; font-size: 1.1rem; z-index: 9;
+  animation: robot-orbit 12s linear infinite;
+}
+.mini-robot:nth-child(1) { animation-duration: 9s; }
+.mini-robot:nth-child(2) { animation-duration: 14s; animation-delay: -5s; }
+.mini-robot:nth-child(3) { animation-duration: 11s; animation-delay: -3s; }
+
+/* ═══════════════════════════════════════════
+   RIGHT — WORKFLOW ACTION CARDS
+═══════════════════════════════════════════ */
+.right-col {
+  height: 100%;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 8px 8px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.right-col::-webkit-scrollbar { width: 3px; }
+.right-col::-webkit-scrollbar-thumb { background: rgba(30,111,255,0.3); border-radius: 3px; }
+
+/* Each workflow row */
+.wf-row {
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Document thumbnail preview */
+.doc-thumb {
+  flex-shrink: 0;
+  width: 62px; height: 76px;
+  background: linear-gradient(145deg, #0E1F50, #071030);
+  border: 1px solid rgba(30,111,255,0.22);
+  border-radius: 9px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+}
+.doc-thumb-icon { font-size: 1.2rem; }
+.doc-thumb-label {
+  font-size: 0.38rem; font-weight: 700; color: #64748B;
+  text-align: center; padding: 0 3px; line-height: 1.2;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.doc-thumb-line {
+  width: 80%; height: 2px;
+  background: rgba(30,111,255,0.25);
+  border-radius: 1px;
+}
+.doc-thumb-line2 {
+  width: 60%; height: 2px;
+  background: rgba(30,111,255,0.15);
+  border-radius: 1px;
+}
+
+/* 2×N grid of action buttons */
+.wf-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px; flex: 1;
+}
+.wf-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  background: rgba(8,18,50,0.85);
+  border: 1px solid rgba(30,111,255,0.2);
+  border-radius: 10px;
+  padding: 6px 4px;
+  cursor: pointer; text-align: center;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+  min-height: 44px;
+  position: relative; overflow: hidden;
+}
+.wf-btn::before {
+  content: '';
+  position: absolute; inset: 0; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(30,111,255,0.04), transparent);
+  pointer-events: none;
+}
+.wf-btn:hover {
+  background: rgba(20,45,110,0.9);
+  border-color: rgba(30,111,255,0.45);
+  transform: scale(1.04);
+  box-shadow: 0 0 16px rgba(30,111,255,0.15);
+}
+.wf-btn:hover::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: 10px;
+  background: rgba(30,111,255,0.05);
+}
+.wf-btn-icon { font-size: 0.95rem; line-height: 1; }
+.wf-btn-label {
+  font-size: 0.52rem; font-weight: 700; color: #94A3B8;
+  line-height: 1.25; text-align: center;
+  transition: color 0.2s;
+}
+.wf-btn:hover .wf-btn-label { color: #BFDBFE; }
+
+/* Active pulse dot on some buttons */
+.wf-row-active .wf-btn:first-child {
+  border-color: rgba(0,200,255,0.35);
+}
+.wf-row-active .wf-btn:first-child::after {
+  content: '';
+  position: absolute; top: 6px; right: 6px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #22D3EE;
+  box-shadow: 0 0 6px rgba(34,211,238,0.8);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════
+   BOTTOM DOCK BAR
+═══════════════════════════════════════════ */
+.dock-bar {
+  flex-shrink: 0;
+  background: rgba(4,10,32,0.92);
+  border-top: 1px solid rgba(30,111,255,0.18);
+  backdrop-filter: blur(20px);
+  padding: 8px 0 10px;
+}
+.dock-inner {
+  display: flex; align-items: center; justify-content: center;
+  max-width: 1400px; margin: 0 auto;
+  overflow-x: auto; gap: 0;
+}
+.dock-inner::-webkit-scrollbar { display: none; }
+.dock-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 6px 18px;
+  cursor: pointer; transition: all 0.2s;
+  border-right: 1px solid rgba(30,111,255,0.1);
+  min-width: 80px; position: relative;
+}
+.dock-item:last-child { border-right: none; }
+.dock-item:hover { background: rgba(30,111,255,0.07); }
+.dock-item.active::after {
+  content: '';
+  position: absolute; bottom: -10px; left: 20%; right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), var(--blue));
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--cyan);
+}
+.dock-icon-wrap {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.dock-label {
+  font-size: 0.55rem; font-weight: 600; color: var(--muted2);
+  text-align: center; line-height: 1.2; white-space: nowrap;
+}
+.dock-item:hover .dock-label { color: #93C5FD; }
+.dock-item.active .dock-label { color: #93C5FD; }
+
+/* Badge on Smart Reminders */
+.dock-badge {
+  position: absolute; top: 4px; right: 14px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #EF4444;
+  font-size: 0.45rem; font-weight: 800; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 6px rgba(239,68,68,0.6);
+}
+
+/* ═══════════════════════════════════════════
+   SETTINGS MODAL
+═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(3,7,18,0.88);
+  backdrop-filter: blur(12px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-box {
+  background: #0C1A40;
+  border: 1px solid rgba(30,111,255,0.25);
+  border-radius: 20px; width: 100%; max-width: 460px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+.modal-head {
+  padding: 18px 22px; border-bottom: 1px solid rgba(30,111,255,0.12);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-head h3 { font-size: 1rem; font-weight: 800; }
+.modal-close {
+  background: none; border: none; color: var(--muted2);
+  font-size: 1.1rem; cursor: pointer; transition: color 0.2s;
+}
+.modal-close:hover { color: #fff; }
+.modal-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+.form-label { font-size: 0.8rem; font-weight: 600; color: #93C5FD; margin-bottom: 6px; display: block; }
+.form-ctrl {
+  width: 100%;
+  background: rgba(5,12,36,0.9);
+  border: 1px solid rgba(30,111,255,0.2);
+  border-radius: 10px; padding: 10px 13px;
+  color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.88rem;
+  outline: none; transition: border-color 0.2s;
+}
+.form-ctrl:focus { border-color: rgba(30,111,255,0.55); }
+.btn-primary {
+  background: linear-gradient(135deg, #1E6FFF, #7B3FF5);
+  color: #fff; border: none;
+  padding: 10px 22px; border-radius: 10px;
+  cursor: pointer; font-weight: 700; font-size: 0.88rem;
+  font-family: 'Inter', sans-serif; transition: all 0.2s;
+}
+.btn-primary:hover { box-shadow: 0 4px 20px rgba(30,111,255,0.45); transform: translateY(-1px); }
+.fb { font-size: 0.76rem; padding: 6px 10px; border-radius: 6px; }
+.fb-ok  { background: rgba(34,197,94,0.1);  color: #86EFAC; border: 1px solid rgba(34,197,94,0.2); }
+.fb-err { background: rgba(239,68,68,0.1);  color: #FCA5A5; border: 1px solid rgba(239,68,68,0.2); }
+
+/* ═══════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+═══════════════════════════════════════════ */
+@keyframes chip-float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes phone-float { 0%,100%{transform:perspective(900px) rotateY(-5deg) rotateX(3deg) translateY(0)} 50%{transform:perspective(900px) rotateY(-5deg) rotateX(3deg) translateY(-8px)} }
+@keyframes blink-cta   { 0%,100%{opacity:1} 50%{opacity:0.2} }
+@keyframes fly1 { 0%,100%{transform:translateX(0) translateY(0) scale(1);opacity:0.7} 50%{transform:translateX(18px) translateY(-8px) scale(1.04);opacity:1} }
+@keyframes fly2 { 0%,100%{transform:translateX(0) translateY(0) scale(0.98);opacity:0.6} 50%{transform:translateX(14px) translateY(6px) scale(1.02);opacity:1} }
+@keyframes fly3 { 0%,100%{transform:translateX(0) translateY(0) rotate(-1deg);opacity:0.65} 50%{transform:translateX(20px) translateY(-4px) rotate(1deg);opacity:1} }
+@keyframes ring-spin-1 { 0%{transform:translate(-50%,-50%) rotate(0deg)} 100%{transform:translate(-50%,-50%) rotate(360deg)} }
+@keyframes ring-spin-2 { 0%{transform:translate(-50%,-50%) rotateX(70deg) rotateZ(0deg)} 100%{transform:translate(-50%,-50%) rotateX(70deg) rotateZ(360deg)} }
+@keyframes ring-spin-3 { 0%{transform:translate(-50%,-50%) rotateX(60deg) rotateY(30deg) rotateZ(0deg)} 100%{transform:translate(-50%,-50%) rotateX(60deg) rotateY(30deg) rotateZ(-360deg)} }
+@keyframes halo-pulse  { 0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.06)} }
+@keyframes robot-orbit {
+  0%   { transform: rotate(0deg)   translateX(168px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(168px) rotate(-360deg); }
+}
+@keyframes pulse-dot { 0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,0.5)} 50%{box-shadow:0 0 0 5px rgba(34,211,238,0)} }
+@keyframes node-blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+@keyframes spin { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<div class="bg-wrap"></div>
+
+<div class="page">
+
+  <!-- TOP SEARCH BAR -->
+  <div class="top-bar">
+    <div class="search-outer">
+      <input type="text" class="search-input" id="searchInput"
+             placeholder='medicine" or "exam"|'
+             autocomplete="off">
+      <button class="search-icon-btn" onclick="doSearch()">🔍</button>
+      <div class="search-result-pop" id="searchPop">
+        <div id="searchPopContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN 3-COLUMN WORKSPACE -->
+  <div class="workspace">
+
+    <!-- ── LEFT: PHONE ── -->
+    <div class="left-col">
+
+      <!-- Floating document chip labels at top -->
+      <div class="doc-chips" style="top:2%;">
+        <div class="doc-chip">🧾 Electricity Receipt</div>
+        <div class="doc-chip">💸 Bill</div>
+        <div class="doc-chip">💧 Water Bill</div>
+        <div class="doc-chip">💻 Laptop Screenshot</div>
+        <div class="doc-chip">🛒 Purchase</div>
+      </div>
+
+      <!-- iPhone with document list -->
+      <div class="phone-wrap">
+        <div class="iphone">
+          <div class="iphone-screen">
+            <div class="iphone-screen-label">🧠 MemoryLens AI</div>
+            <div class="iphone-doc-list">
+              <div class="iphone-doc-item">
+                <span class="iphone-doc-emoji">📄</span>
+                <div><div class="iphone-doc-title">Flipkart Invoice</div><div class="iphone-doc-text">₹2,499 · Saved</div></div>
+              </div>
+              <div class="iphone-doc-item">
+                <span class="iphone-doc-emoji">💊</span>
+                <div><div class="iphone-doc-title">Medicine Rx</div><div class="iphone-doc-text">Dr. Sharma · Expires Dec</div></div>
+              </div>
+              <div class="iphone-doc-item">
+                <span class="iphone-doc-emoji">⚡</span>
+                <div><div class="iphone-doc-title">EB Bill</div><div class="iphone-doc-text">₹1,847 · Due Aug 15</div></div>
+              </div>
+              <div class="iphone-doc-item">
+                <span class="iphone-doc-emoji">🎫</span>
+                <div><div class="iphone-doc-title">Train Ticket</div><div class="iphone-doc-text">PNR 421 · Nov 20</div></div>
+              </div>
+              <div class="iphone-doc-item">
+                <span class="iphone-doc-emoji">📋</span>
+                <div><div class="iphone-doc-title">Exam Notice</div><div class="iphone-doc-text">Dec 10 · Hall B</div></div>
+              </div>
+              <div class="iphone-doc-item">
+                <span class="iphone-doc-emoji">🛒</span>
+                <div><div class="iphone-doc-title">Amazon Cart</div><div class="iphone-doc-text">YouTube Review saved</div></div>
+              </div>
+            </div>
+            <div class="iphone-cta">📤 Tap to Upload Document</div>
+          </div>
+
+          <!-- Flying document cards -->
+          <div class="flying-docs">
+            <div class="fly-doc">🧾 Electricity Bill · ₹1,847</div>
+            <div class="fly-doc">💊 Metformin 500mg</div>
+            <div class="fly-doc">🛒 Amazon Cart · 3 items</div>
+            <div class="fly-doc">🎫 Coach B4 · Berth 32</div>
+            <div class="fly-doc">📋 Organic Chem · Dec 10</div>
+            <div class="fly-doc">▶️ YouTube Review</div>
+            <div class="fly-doc">💧 Water Bill · ₹340</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── CENTER: BRAIN PORTAL ── -->
+    <div class="center-col">
+      <div class="brain-scene">
+
+        <!-- Glow halo -->
+        <div class="brain-glow-halo"></div>
+
+        <!-- Orbital rings -->
+        <div class="orb-ring orb-ring-1"></div>
+        <div class="orb-ring orb-ring-2"></div>
+        <div class="orb-ring orb-ring-3"></div>
+        <div class="orb-ring orb-ring-4"></div>
+
+        <!-- Neural sphere canvas -->
+        <canvas id="brainCanvas" width="300" height="300"></canvas>
+
+        <!-- Glowing brain SVG -->
+        <svg width="220" height="220" viewBox="0 0 220 220"
+             style="position:absolute;z-index:10;filter:drop-shadow(0 0 18px rgba(0,200,255,0.8)) drop-shadow(0 0 40px rgba(100,60,240,0.55));"
+             xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="brainGrad" cx="50%" cy="40%" r="55%">
+              <stop offset="0%"  stop-color="#A0E8FF" stop-opacity="0.95"/>
+              <stop offset="30%" stop-color="#40B4FF" stop-opacity="0.85"/>
+              <stop offset="65%" stop-color="#6060FF" stop-opacity="0.7"/>
+              <stop offset="100%" stop-color="#4020C0" stop-opacity="0.5"/>
+            </radialGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Brain outline paths -->
+          <g filter="url(#glow)">
+            <!-- Left hemisphere -->
+            <path d="M110 55 C85 40, 45 45, 38 75 C30 100, 35 125, 50 140 C62 152, 75 158, 90 160 C100 162, 108 160, 110 158"
+                  fill="none" stroke="url(#brainGrad)" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M80 65 C68 70, 58 82, 55 98"
+                  fill="none" stroke="#60C8FF" stroke-width="1.8" stroke-opacity="0.85"/>
+            <path d="M65 90 C60 102, 62 116, 68 128"
+                  fill="none" stroke="#60C8FF" stroke-width="1.8" stroke-opacity="0.7"/>
+            <path d="M55 120 C62 132, 72 142, 85 148"
+                  fill="none" stroke="#60C8FF" stroke-width="1.8" stroke-opacity="0.75"/>
+            <path d="M95 75 C88 88, 82 100, 84 116"
+                  fill="none" stroke="#90D0FF" stroke-width="1.5" stroke-opacity="0.6"/>
+            <!-- Right hemisphere -->
+            <path d="M110 55 C135 40, 175 45, 182 75 C190 100, 185 125, 170 140 C158 152, 145 158, 130 160 C120 162, 112 160, 110 158"
+                  fill="none" stroke="url(#brainGrad)" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M140 65 C152 70, 162 82, 165 98"
+                  fill="none" stroke="#60C8FF" stroke-width="1.8" stroke-opacity="0.85"/>
+            <path d="M155 90 C160 102, 158 116, 152 128"
+                  fill="none" stroke="#60C8FF" stroke-width="1.8" stroke-opacity="0.7"/>
+            <path d="M165 120 C158 132, 148 142, 135 148"
+                  fill="none" stroke="#60C8FF" stroke-width="1.8" stroke-opacity="0.75"/>
+            <path d="M125 75 C132 88, 138 100, 136 116"
+                  fill="none" stroke="#90D0FF" stroke-width="1.5" stroke-opacity="0.6"/>
+            <!-- Center division line -->
+            <line x1="110" y1="58" x2="110" y2="158"
+                  stroke="#4080FF" stroke-width="1" stroke-dasharray="4 4" stroke-opacity="0.5"/>
+            <!-- Brain stem -->
+            <path d="M96 158 C96 170, 98 178, 100 185 C102 190, 108 193, 110 193 C112 193, 118 190, 120 185 C122 178, 124 170, 124 158"
+                  fill="none" stroke="#5080FF" stroke-width="2" stroke-opacity="0.6"/>
+          </g>
+          <!-- Neural node dots -->
+          <circle class="node-dot" cx="75"  cy="95"  r="4" fill="#00EEFF" opacity="0.9"/>
+          <circle class="node-dot" cx="62"  cy="125" r="3" fill="#40A0FF" opacity="0.8" style="animation-delay:0.3s"/>
+          <circle class="node-dot" cx="88"  cy="148" r="3.5" fill="#00EEFF" opacity="0.85" style="animation-delay:0.6s"/>
+          <circle class="node-dot" cx="145" cy="95"  r="4" fill="#00EEFF" opacity="0.9" style="animation-delay:0.9s"/>
+          <circle class="node-dot" cx="158" cy="125" r="3" fill="#40A0FF" opacity="0.8" style="animation-delay:1.2s"/>
+          <circle class="node-dot" cx="132" cy="148" r="3.5" fill="#00EEFF" opacity="0.85" style="animation-delay:1.5s"/>
+          <circle class="node-dot" cx="110" cy="80"  r="5" fill="#FFFFFF" opacity="0.95" style="animation-delay:0.2s"/>
+          <circle class="node-dot" cx="90"  cy="70"  r="2.5" fill="#80D0FF" opacity="0.7" style="animation-delay:0.8s"/>
+          <circle class="node-dot" cx="130" cy="70"  r="2.5" fill="#80D0FF" opacity="0.7" style="animation-delay:1.1s"/>
+          <!-- Connection lines between nodes -->
+          <line x1="75" y1="95" x2="110" y2="80" stroke="#00CCFF" stroke-width="0.8" stroke-opacity="0.4"/>
+          <line x1="145" y1="95" x2="110" y2="80" stroke="#00CCFF" stroke-width="0.8" stroke-opacity="0.4"/>
+          <line x1="75" y1="95" x2="62" y2="125" stroke="#00AAFF" stroke-width="0.7" stroke-opacity="0.35"/>
+          <line x1="62" y1="125" x2="88" y2="148" stroke="#00AAFF" stroke-width="0.7" stroke-opacity="0.35"/>
+          <line x1="145" y1="95" x2="158" y2="125" stroke="#00AAFF" stroke-width="0.7" stroke-opacity="0.35"/>
+          <line x1="158" y1="125" x2="132" y2="148" stroke="#00AAFF" stroke-width="0.7" stroke-opacity="0.35"/>
+          <line x1="88" y1="148" x2="110" y2="155" stroke="#0088FF" stroke-width="0.7" stroke-opacity="0.4"/>
+          <line x1="132" y1="148" x2="110" y2="155" stroke="#0088FF" stroke-width="0.7" stroke-opacity="0.4"/>
+        </svg>
+
+        <!-- Mini robots around the sphere -->
+        <div class="mini-robot" style="top:50%;left:50%;transform-origin:center;">🤖</div>
+        <div class="mini-robot" style="top:50%;left:50%;animation-delay:-4s;transform-origin:center;">🤖</div>
+        <div class="mini-robot" style="top:50%;left:50%;animation-delay:-8s;transform-origin:center;">🤖</div>
+
+        <!-- SVG connection lines to phone and cards -->
+        <svg id="connLines" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00C8FF" stop-opacity="0"/>
+              <stop offset="50%" stop-color="#00C8FF" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#00C8FF" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="lg2" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#7B3FF5" stop-opacity="0"/>
+              <stop offset="50%" stop-color="#7B3FF5" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#7B3FF5" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+
+      </div>
+    </div>
+
+    <!-- ── RIGHT: WORKFLOW CARDS ── -->
+    <div class="right-col">
+
+      <!-- Row 1: Shopping / Amazon -->
+      <div class="wf-row wf-row-active">
+        <div class="doc-thumb">
+          <div class="doc-thumb-icon">🛒</div>
+          <div class="doc-thumb-line"></div>
+          <div class="doc-thumb-line2"></div>
+          <div class="doc-thumb-label">Amazon<br>Receipt</div>
+        </div>
+        <div class="wf-actions" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+          <div class="wf-btn" onclick="showActionPop('Delivery Reminder','Track your order delivery date and get notified when it arrives.')">
+            <span class="wf-btn-icon">🚚</span>
+            <span class="wf-btn-label">Delivery<br>Reminder</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Price History','See how the price of this item changed over time.')">
+            <span class="wf-btn-icon">📈</span>
+            <span class="wf-btn-label">Price<br>History</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Expense Tracker','Categorize this purchase into your monthly expense summary.')">
+            <span class="wf-btn-icon">💰</span>
+            <span class="wf-btn-label">Expense<br>Tracker</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Wishlist','Add this item to your MemoryLens price-drop wishlist.')">
+            <span class="wf-btn-icon">🔖</span>
+            <span class="wf-btn-label">Wishlist</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Medicine -->
+      <div class="wf-row">
+        <div class="doc-thumb">
+          <div class="doc-thumb-icon">💊</div>
+          <div class="doc-thumb-line" style="background:rgba(123,63,245,0.3)"></div>
+          <div class="doc-thumb-line2" style="background:rgba(123,63,245,0.18)"></div>
+          <div class="doc-thumb-label">Medicine<br>Rx</div>
+        </div>
+        <div class="wf-actions" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+          <div class="wf-btn" onclick="showActionPop('Medicine Reminder','Set daily intake reminders for each medicine.')">
+            <span class="wf-btn-icon">⏰</span>
+            <span class="wf-btn-label">Medicine<br>Reminder</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Health Summary','View a summary of all your prescriptions and active medicines.')">
+            <span class="wf-btn-icon">🩺</span>
+            <span class="wf-btn-label">Health<br>Summary</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Expiry Alert','Get an alert 7 days before your prescription expires.')">
+            <span class="wf-btn-icon">⚠️</span>
+            <span class="wf-btn-label">Expiry<br>Alert</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Doctor Questions','Generate smart follow-up questions for your next doctor visit.')">
+            <span class="wf-btn-icon">❓</span>
+            <span class="wf-btn-label">Doctor<br>Questions</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Notice/Document -->
+      <div class="wf-row">
+        <div class="doc-thumb">
+          <div class="doc-thumb-icon">📢</div>
+          <div class="doc-thumb-line" style="background:rgba(0,200,255,0.25)"></div>
+          <div class="doc-thumb-line2"></div>
+          <div class="doc-thumb-label">Notice<br>Doc</div>
+        </div>
+        <div class="wf-actions" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="wf-btn" onclick="showActionPop('Simple Explanation','Rewrite this legal or official notice in plain simple English.')">
+            <span class="wf-btn-icon">💡</span>
+            <span class="wf-btn-label">Simple<br>Explanation</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Highlighted Values','Extract and highlight all critical amounts, dates, and clauses.')">
+            <span class="wf-btn-icon">🔆</span>
+            <span class="wf-btn-label">Highlighted<br>Values</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Timeline Comparison','Compare the key dates in this document with your saved calendar.')">
+            <span class="wf-btn-icon">📊</span>
+            <span class="wf-btn-label">Timeline<br>Comparison</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Ticket/Transport -->
+      <div class="wf-row">
+        <div class="doc-thumb">
+          <div class="doc-thumb-icon">🎫</div>
+          <div class="doc-thumb-line" style="background:rgba(34,197,94,0.25)"></div>
+          <div class="doc-thumb-line2" style="background:rgba(34,197,94,0.15)"></div>
+          <div class="doc-thumb-label">Ticket /<br>Travel</div>
+        </div>
+        <div class="wf-actions" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+          <div class="wf-btn" onclick="showActionPop('Departure Countdown','Live countdown to your departure time pinned to dashboard.')">
+            <span class="wf-btn-icon">⏱️</span>
+            <span class="wf-btn-label">Departure<br>Countdown</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Platform Reminder','Get notified with your platform, gate, or terminal 2 hrs before.')">
+            <span class="wf-btn-icon">🚉</span>
+            <span class="wf-btn-label">Platform<br>Reminder</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Travel Timeline','Generate a visual hour-by-hour itinerary from ticket details.')">
+            <span class="wf-btn-icon">🗺️</span>
+            <span class="wf-btn-label">Travel<br>Timeline</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Weather','Get a weather forecast for your destination on travel date.')">
+            <span class="wf-btn-icon">🌤️</span>
+            <span class="wf-btn-label">Weather</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 5: Airport/Flight -->
+      <div class="wf-row">
+        <div class="doc-thumb">
+          <div class="doc-thumb-icon">✈️</div>
+          <div class="doc-thumb-line" style="background:rgba(245,158,11,0.25)"></div>
+          <div class="doc-thumb-line2" style="background:rgba(245,158,11,0.15)"></div>
+          <div class="doc-thumb-label">Airport<br>Boarding</div>
+        </div>
+        <div class="wf-actions" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="wf-btn" onclick="showActionPop('Airport Reminder','Alert 3 hours before flight with check-in and departure info.')">
+            <span class="wf-btn-icon">🛫</span>
+            <span class="wf-btn-label">Airport<br>Reminder</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Gate Information','Extract your gate number and boarding time instantly.')">
+            <span class="wf-btn-icon">🚪</span>
+            <span class="wf-btn-label">Gate<br>Information</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Packing Checklist','AI generates a custom packing checklist based on your destination.')">
+            <span class="wf-btn-icon">🧳</span>
+            <span class="wf-btn-label">Packing<br>Checklist</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 6: Exam -->
+      <div class="wf-row">
+        <div class="doc-thumb">
+          <div class="doc-thumb-icon">📋</div>
+          <div class="doc-thumb-line" style="background:rgba(239,68,68,0.22)"></div>
+          <div class="doc-thumb-line2" style="background:rgba(239,68,68,0.12)"></div>
+          <div class="doc-thumb-label">Exam<br>Notice</div>
+        </div>
+        <div class="wf-actions" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+          <div class="wf-btn" onclick="showActionPop('Exam Countdown','Live countdown widget to your exam date on the dashboard.')">
+            <span class="wf-btn-icon">⏳</span>
+            <span class="wf-btn-label">Exam<br>Countdown</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Assignment Deadline','Add assignment or coursework deadline to your calendar.')">
+            <span class="wf-btn-icon">📝</span>
+            <span class="wf-btn-label">Assignment<br>Deadline</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Calendar Event','Create a Google/iCal event with venue and time details.')">
+            <span class="wf-btn-icon">📅</span>
+            <span class="wf-btn-label">Calendar<br>Event</span>
+          </div>
+          <div class="wf-btn" onclick="showActionPop('Reminder','Multi-stage alerts: 7 days, 1 day, and morning-of exam.')">
+            <span class="wf-btn-icon">🔔</span>
+            <span class="wf-btn-label">Reminder</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-col -->
+
+  </div><!-- /workspace -->
+
+  <!-- BOTTOM DOCK BAR -->
+  <div class="dock-bar">
+    <div class="dock-inner">
+      <div class="dock-item active" onclick="dockNav('home')" id="dock-home">
+        <div class="dock-icon-wrap">🤖</div>
+        <div class="dock-label">AI<br>Understanding</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('search')">
+        <div class="dock-icon-wrap">🔍</div>
+        <div class="dock-label">Semantic<br>Search</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('ocr')">
+        <div class="dock-icon-wrap">📖</div>
+        <div class="dock-label">OCR</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('reminders')" style="position:relative">
+        <div class="dock-badge" id="reminderBadge">3</div>
+        <div class="dock-icon-wrap">🔔</div>
+        <div class="dock-label">Smart<br>Reminders</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('timeline')">
+        <div class="dock-icon-wrap">📅</div>
+        <div class="dock-label">Timeline</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('graph')">
+        <div class="dock-icon-wrap">🕸️</div>
+        <div class="dock-label">Memory<br>Graph</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('expense')">
+        <div class="dock-icon-wrap">💰</div>
+        <div class="dock-label">Expense<br>Tracking</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('cal')">
+        <div class="dock-icon-wrap">🗓️</div>
+        <div class="dock-label">Calendar<br>Sync</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('health')">
+        <div class="dock-icon-wrap">🏥</div>
+        <div class="dock-label">Health<br>Insights</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('travel')">
+        <div class="dock-icon-wrap">✈️</div>
+        <div class="dock-label">Travel<br>Assistant</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('docs')">
+        <div class="dock-icon-wrap">🧠</div>
+        <div class="dock-label">Document<br>Intelligence</div>
+      </div>
+      <div class="dock-item" onclick="dockNav('cat')">
+        <div class="dock-icon-wrap">⚡</div>
+        <div class="dock-label">Instant<br>Categorization</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ACTION POP-UP PANEL -->
+<div id="actionPop" style="
+  display:none; position:fixed; bottom:90px; right:28px; width:320px;
+  background:#0C1A40; border:1px solid rgba(30,111,255,0.3); border-radius:16px;
+  padding:18px; z-index:500; box-shadow:0 16px 40px rgba(0,0,0,0.7);
+  animation:fly1 0.3s ease;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div id="actionPopTitle" style="font-size:0.9rem;font-weight:800;color:#BFDBFE;"></div>
+    <button onclick="document.getElementById('actionPop').style.display='none'"
+            style="background:none;border:none;color:#64748B;cursor:pointer;font-size:1rem;">✕</button>
+  </div>
+  <div id="actionPopDesc" style="font-size:0.82rem;color:#94A3B8;line-height:1.6;"></div>
+  <div style="margin-top:12px;">
+    <a href="/" style="font-size:0.72rem;color:#60A5FA;text-decoration:none;font-weight:600;">
+      📤 Upload a document to activate this → Go to App
+    </a>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsMod" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>⚙️ Connect AI Provider</h3>
+      <button class="modal-close" onclick="document.getElementById('settingsMod').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>
+        <label class="form-label">Provider</label>
+        <select id="provSel" class="form-ctrl">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI GPT-4o</option>
+          <option value="claude">Anthropic Claude</option>
+          <option value="groq">Groq (Free)</option>
+          <option value="custom">Custom OpenAI-compatible</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">API Key</label>
+        <input type="password" id="apiKeyIn" class="form-ctrl" placeholder="Paste your API key here…">
+      </div>
+      <div id="baseUrlGrp" style="display:none">
+        <label class="form-label">Base URL</label>
+        <input type="text" id="baseUrlIn" class="form-ctrl" placeholder="https://your-api-endpoint.com/v1">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn-primary" onclick="saveSettings()">Test & Connect</button>
+        <a href="/" style="font-size:0.8rem;color:#60A5FA;">← Back to App</a>
+      </div>
+      <div id="settFb"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════
+   NEURAL SPHERE CANVAS
+═══════════════════════════ */
+(function() {
+  const canvas = document.getElementById('brainCanvas');
+  const ctx    = canvas.getContext('2d');
+  const W = 300, H = 300, R = 120;
+  let rot = 0, targetCX = W/2, targetCY = H/2, cx = W/2, cy = H/2;
+
+  const nodes = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < 110; i++) {
+    const y = 1 - (i / 109) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y*y));
+    const theta = golden * i;
+    nodes.push({
+      ox: Math.cos(theta) * r,
+      oy: y,
+      oz: Math.sin(theta) * r,
+      size: Math.random() * 1.5 + 0.5,
+      pulse: Math.random() * Math.PI * 2,
+      col: Math.random() > 0.5 ? [0,200,255] : Math.random() > 0.5 ? [100,60,240] : [60,130,255]
+    });
+  }
+
+  document.addEventListener('mousemove', e => {
+    targetCX = W/2 - (e.clientX/window.innerWidth - 0.5) * 28;
+    targetCY = H/2 - (e.clientY/window.innerHeight - 0.5) * 28;
+  });
+
+  function project(x, y, z) {
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    const rx = x*cos - z*sin, rz = x*sin + z*cos;
+    const fov = 2.6, s = fov/(fov+rz);
+    return { x: cx + rx*R*s, y: cy + y*R*s, z: rz, s };
+  }
+
+  function draw() {
+    const t = Date.now()/1000;
+    cx += (targetCX - cx) * 0.08;
+    cy += (targetCY - cy) * 0.08;
+    ctx.clearRect(0,0,W,H);
+
+    const proj = nodes.map(n => {
+      const p = project(n.ox, n.oy, n.oz);
+      const pulse = Math.sin(t*2.2 + n.pulse)*0.3+0.7;
+      return {...p, size:n.size, pulse, col:n.col};
+    }).sort((a,b) => a.z-b.z);
+
+    // Connections
+    for(let i=0;i<proj.length;i++) for(let j=i+1;j<proj.length;j++) {
+      if(proj[i].z < -0.2 || proj[j].z < -0.2) continue;
+      const dx=proj[i].x-proj[j].x, dy=proj[i].y-proj[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d>65) continue;
+      const alpha=(1-d/65)*0.18*Math.min(proj[i].s,proj[j].s);
+      ctx.beginPath();
+      ctx.moveTo(proj[i].x,proj[i].y);
+      ctx.lineTo(proj[j].x,proj[j].y);
+      ctx.strokeStyle=`rgba(60,160,255,${alpha})`;
+      ctx.lineWidth=0.5;
+      ctx.stroke();
+    }
+
+    // Nodes
+    for(const p of proj) {
+      if(p.z < -0.2) continue;
+      const alpha=((p.z+1)/2)*p.pulse*0.9;
+      const sz=p.size*p.s*1.6;
+      const [r,g,b]=p.col;
+      ctx.shadowBlur=7;
+      ctx.shadowColor=`rgba(${r},${g},${b},${alpha})`;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,sz,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${r},${g},${b},${alpha})`;
+      ctx.fill();
+    }
+    ctx.shadowBlur=0;
+    rot += 0.0025;
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ═══════════════════════════
+   TYPEWRITER SEARCH
+═══════════════════════════ */
+(function() {
+  const inp = document.getElementById('searchInput');
+  const queries = [
+    '"medicine" or "exam"|',
+    'Find my electricity bill due date...',
+    'When does my prescription expire?',
+    'What is my train seat number?',
+    'Show all bills due this month...',
+    'Exam date and venue details...',
+  ];
+  let qi=0, ci=0, del=false, pause=false, focused=false;
+  inp.addEventListener('focus', ()=>{ focused=true; inp.placeholder='Search your documents...'; });
+  inp.addEventListener('blur',  ()=>{ focused=false; });
+  inp.addEventListener('keypress', e=>{ if(e.key==='Enter') doSearch(); });
+
+  function tick() {
+    if(focused||inp.value){ setTimeout(tick,400); return; }
+    const t=queries[qi];
+    if(pause){ pause=false; setTimeout(tick,2000); return; }
+    if(!del){ ci++; inp.placeholder=t.slice(0,ci)+(ci<t.length?'|':''); if(ci>=t.length){del=true;pause=true;} setTimeout(tick,75); }
+    else { ci--; inp.placeholder=ci>0?t.slice(0,ci)+'|':''; if(ci<=0){del=false;qi=(qi+1)%queries.length;} setTimeout(tick,38); }
+  }
+  setTimeout(tick, 1200);
+})();
+
+/* ═══════════════════════════
+   SEARCH
+═══════════════════════════ */
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if(!q) return;
+  const pop = document.getElementById('searchPop');
+  const con = document.getElementById('searchPopContent');
+  pop.style.display = 'block';
+  con.innerHTML = '<div style="color:#94A3B8;font-size:0.82rem;display:flex;gap:8px;align-items:center;"><div style="width:14px;height:14px;border:2px solid rgba(0,200,255,0.3);border-top-color:#00C8FF;border-radius:50%;animation:spin 0.7s linear infinite;"></div>Searching…</div>';
+  fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.success) con.innerHTML=`<strong style="color:#93C5FD;font-size:0.78rem;">🧠 AI:</strong><br><br><span style="font-size:0.82rem;line-height:1.6;">${d.answer.replace(/\n/g,'<br>')}</span>`;
+      else con.innerHTML=`<span style="color:#FCA5A5;font-size:0.8rem;">❌ ${d.error}</span>`;
+    })
+    .catch(e=>{con.innerHTML=`<span style="color:#FCA5A5;font-size:0.8rem;">Connect an AI key first → <a href="/" style="color:#60A5FA;">Go to App ⚙️</a></span>`;});
+}
+document.addEventListener('click', e=>{ if(!e.target.closest('.search-outer')) document.getElementById('searchPop').style.display='none'; });
+
+/* ═══════════════════════════
+   WORKFLOW ACTION POPUP
+═══════════════════════════ */
+function showActionPop(title, desc) {
+  document.getElementById('actionPopTitle').textContent = '🔧 ' + title;
+  document.getElementById('actionPopDesc').textContent  = desc;
+  document.getElementById('actionPop').style.display    = 'block';
+}
+
+/* ═══════════════════════════
+   DOCK NAVIGATION
+═══════════════════════════ */
+function dockNav(id) {
+  document.querySelectorAll('.dock-item').forEach(d=>d.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if(id==='home'||id==='search'||id==='ocr'||id==='reminders') {
+    window.location.href = '/#' + id;
+  }
+}
+
+/* ═══════════════════════════
+   SETTINGS
+═══════════════════════════ */
+document.getElementById('provSel').addEventListener('change', function(){
+  document.getElementById('baseUrlGrp').style.display = this.value==='custom'?'block':'none';
+});
+
+function saveSettings() {
+  const provider = document.getElementById('provSel').value;
+  const key      = document.getElementById('apiKeyIn').value.trim();
+  const url      = document.getElementById('baseUrlIn').value.trim();
+  const fb       = document.getElementById('settFb');
+  if(!key){ fb.className='fb fb-err'; fb.textContent='API Key is required.'; return; }
+  fb.className='fb'; fb.textContent='Testing connection…';
+  fetch('/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({provider,api_key:key,base_url:url})})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.success){fb.className='fb fb-ok';fb.textContent='✅ Connected! Redirecting…';setTimeout(()=>window.location.href='/',900);}
+      else{fb.className='fb fb-err';fb.textContent='❌ '+d.error;}
+    }).catch(e=>{fb.className='fb fb-err';fb.textContent='Network error.';});
+}
+
+/* ═══════════════════════════
+   ESCAPE KEY CLOSE
+═══════════════════════════ */
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    document.getElementById('settingsMod').style.display='none';
+    document.getElementById('actionPop').style.display='none';
+    document.getElementById('searchPop').style.display='none';
+  }
+});
+
+/* ═══════════════════════════
+   LOAD REMINDER COUNT
+═══════════════════════════ */
+fetch('/api/reminders').then(r=>r.json()).then(d=>{
+  const n = (d.reminders||[]).length;
+  const badge = document.getElementById('reminderBadge');
+  if(badge){ badge.textContent=n; badge.style.display=n?'flex':'none'; }
+}).catch(()=>{});
+</script>
+</body>
+</html>
