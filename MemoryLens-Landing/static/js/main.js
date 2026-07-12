@@ -1146,50 +1146,6 @@ function dockNav(id) {
     }
   }
 }
-}
-
-/* ═══════════════════════════
-   SETTINGS
-═══════════════════════════ */
-document.getElementById('provSel').addEventListener('change', function(){
-  document.getElementById('baseUrlGrp').style.display = this.value==='custom'?'block':'none';
-});
-
-function saveSettings() {
-  const provider = document.getElementById('provSel').value;
-  const key      = document.getElementById('apiKeyIn').value.trim();
-  const url      = document.getElementById('baseUrlIn').value.trim();
-  const fb       = document.getElementById('settFb');
-  if(!key){ fb.className='fb fb-err'; fb.textContent='API Key is required.'; return; }
-  fb.className='fb'; fb.textContent='Testing connection…';
-  fetch('/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({provider,api_key:key,base_url:url})})
-    .then(r=>r.json())
-    .then(d=>{
-      if(d.success){fb.className='fb fb-ok';fb.textContent='✅ Connected! Redirecting…';setTimeout(()=>window.location.href='/',900);}
-      else{fb.className='fb fb-err';fb.textContent='❌ '+d.error;}
-    }).catch(e=>{fb.className='fb fb-err';fb.textContent='Network error.';});
-}
-
-/* ═══════════════════════════
-   ESCAPE KEY CLOSE
-═══════════════════════════ */
-document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){
-    document.getElementById('settingsMod').style.display='none';
-    document.getElementById('actionPop').style.display='none';
-    document.getElementById('searchPop').style.display='none';
-  }
-});
-
-/* ═══════════════════════════
-   LOAD REMINDER COUNT
-═══════════════════════════ */
-fetch('/api/reminders').then(r=>r.json()).then(d=>{
-  const n = (d.reminders||[]).length;
-  const badge = document.getElementById('reminderBadge');
-  if(badge){ badge.textContent=n; badge.style.display=n?'flex':'none'; }
-}).catch(()=>{});
 
 
 /* ══════════════════════════════════════
