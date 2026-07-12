@@ -68,9 +68,13 @@ class GeminiProvider(ExtractionProvider):
             raise requests.exceptions.HTTPError(msg, response=resp)
 
     def test_connection(self) -> bool:
-        """Use models list endpoint — fast, lightweight, properly rejects bad keys."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
-        resp = requests.get(url, timeout=10)
+        """Test connection by sending a minimal content generation request."""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._get_model()}:generateContent?key={self.api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": "ping"}]}],
+            "generationConfig": {"maxOutputTokens": 1}
+        }
+        resp = requests.post(url, json=payload, timeout=10)
         self._check_response(resp)
         return True
 
@@ -112,9 +116,14 @@ class OpenAIProvider(ExtractionProvider):
         return resp.json()["choices"][0]["message"]["content"]
 
     def test_connection(self) -> bool:
-        url = "https://api.openai.com/v1/models"
+        url = "https://api.openai.com/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        resp = requests.get(url, headers=headers, timeout=10)
+        payload = {
+            "model": self.model_name or "gpt-4o-mini",
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 1
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=10)
         resp.raise_for_status()
         return True
 
@@ -223,9 +232,14 @@ class GroqProvider(ExtractionProvider):
         return resp.json()["choices"][0]["message"]["content"]
 
     def test_connection(self) -> bool:
-        url = "https://api.groq.com/openai/v1/models"
+        url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        resp = requests.get(url, headers=headers, timeout=10)
+        payload = {
+            "model": self.model_name or "llama3-8b-8192",
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 1
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=10)
         resp.raise_for_status()
         return True
 
@@ -276,9 +290,14 @@ class CustomProvider(ExtractionProvider):
         if not self.base_url:
             raise ValueError("Base URL required for Custom provider")
         
-        url = f"{self.base_url.rstrip('/')}/models"
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        resp = requests.get(url, headers=headers, timeout=10)
+        payload = {
+            "model": self.model_name or "default",
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 1
+        }
+        resp = requests.post(url, headers=headers, json=payload, timeout=10)
         resp.raise_for_status()
         return True
 
