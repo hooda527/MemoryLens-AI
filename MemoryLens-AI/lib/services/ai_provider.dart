@@ -26,7 +26,8 @@ class GeminiProvider implements AIProvider {
   @override
   Future<String> analyzeDocument(List<int> fileBytes, String mimeType, String prompt) async {
     if (apiKey == null || apiKey!.isEmpty) throw Exception("API Key is missing");
-    final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey");
+    final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-2
+    .5-flash:generateContent?key=$apiKey");
     final base64Image = base64Encode(fileBytes);
     final body = {
       'contents': [
@@ -59,7 +60,7 @@ class GeminiProvider implements AIProvider {
 
   @override
   Future<bool> testConnection(String apiKey) async {
-    final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey");
+    final url = Uri.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey");
     final body = {
       'contents': [
         {

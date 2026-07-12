@@ -4,9 +4,10 @@ import re
 import requests
 
 class ExtractionProvider:
-    def __init__(self, api_key: str, base_url: str = None):
+    def __init__(self, api_key: str, base_url: str = None, model_name: str = None):
         self.api_key = api_key
         self.base_url = base_url
+        self.model_name = model_name
 
     def analyze(self, image_bytes: bytes, mime_type: str, prompt: str) -> dict:
         raise NotImplementedError()
@@ -26,7 +27,8 @@ def strip_fences(text: str) -> str:
 class GeminiProvider(ExtractionProvider):
     def analyze(self, image_bytes: bytes, mime_type: str, prompt: str) -> dict:
         b64 = base64.b64encode(image_bytes).decode("utf-8")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+        model = self.model_name or "gemini-1.5-flash"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{
                 "parts": [
@@ -43,7 +45,8 @@ class GeminiProvider(ExtractionProvider):
         return json.loads(strip_fences(raw))
 
     def chat(self, prompt: str) -> str:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.api_key}"
+        model = self.model_name or "gemini-1.5-flash"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.5, "maxOutputTokens": 2048}
@@ -64,7 +67,7 @@ class OpenAIProvider(ExtractionProvider):
         url = "https://api.openai.com/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            "model": "gpt-4o",
+            "model": self.model_name or "gpt-4o",
             "messages": [
                 {
                     "role": "user",
@@ -86,7 +89,7 @@ class OpenAIProvider(ExtractionProvider):
         url = "https://api.openai.com/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            "model": "gpt-4o-mini",
+            "model": self.model_name or "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.5,
             "max_tokens": 2048
@@ -112,7 +115,7 @@ class ClaudeProvider(ExtractionProvider):
             "content-type": "application/json"
         }
         payload = {
-            "model": "claude-3-5-sonnet-20241022",
+            "model": self.model_name or "claude-3-5-sonnet-20241022",
             "max_tokens": 2048,
             "temperature": 0.1,
             "messages": [
@@ -145,7 +148,7 @@ class ClaudeProvider(ExtractionProvider):
             "content-type": "application/json"
         }
         payload = {
-            "model": "claude-3-haiku-20240307",
+            "model": self.model_name or "claude-3-haiku-20240307",
             "max_tokens": 2048,
             "temperature": 0.5,
             "messages": [{"role": "user", "content": prompt}]
@@ -175,7 +178,7 @@ class GroqProvider(ExtractionProvider):
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            "model": "llama-3.2-11b-vision-preview",
+            "model": self.model_name or "llama-3.2-11b-vision-preview",
             "messages": [
                 {
                     "role": "user",
@@ -197,7 +200,7 @@ class GroqProvider(ExtractionProvider):
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            "model": "llama3-8b-8192",
+            "model": self.model_name or "llama3-8b-8192",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.5,
             "max_completion_tokens": 2048
@@ -222,7 +225,7 @@ class CustomProvider(ExtractionProvider):
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            "model": "default", 
+            "model": self.model_name or "default", 
             "messages": [
                 {
                     "role": "user",
@@ -247,7 +250,7 @@ class CustomProvider(ExtractionProvider):
         url = f"{self.base_url.rstrip('/')}/chat/completions"
         headers = {"Authorization": f"Bearer {self.api_key}"}
         payload = {
-            "model": "default",
+            "model": self.model_name or "default",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.5,
             "max_tokens": 2048
@@ -266,16 +269,16 @@ class CustomProvider(ExtractionProvider):
         resp.raise_for_status()
         return True
 
-def get_provider(provider_name: str, api_key: str, base_url: str = None) -> ExtractionProvider:
+def get_provider(provider_name: str, api_key: str, base_url: str = None, model_name: str = None) -> ExtractionProvider:
     if provider_name == "gemini":
-        return GeminiProvider(api_key, base_url)
+        return GeminiProvider(api_key, base_url, model_name)
     elif provider_name == "openai":
-        return OpenAIProvider(api_key, base_url)
+        return OpenAIProvider(api_key, base_url, model_name)
     elif provider_name == "claude":
-        return ClaudeProvider(api_key, base_url)
+        return ClaudeProvider(api_key, base_url, model_name)
     elif provider_name == "groq":
-        return GroqProvider(api_key, base_url)
+        return GroqProvider(api_key, base_url, model_name)
     elif provider_name == "custom":
-        return CustomProvider(api_key, base_url)
+        return CustomProvider(api_key, base_url, model_name)
     else:
         raise ValueError(f"Unknown provider: {provider_name}")

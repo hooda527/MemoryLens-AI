@@ -118,12 +118,13 @@ def connect_provider():
     provider_name = body.get("provider")
     api_key = body.get("api_key")
     base_url = body.get("base_url")
+    model_name = body.get("model_name")
     
     if not provider_name or not api_key:
         return jsonify({"success": False, "error": "Provider and API Key are required."}), 400
         
     try:
-        provider = get_provider(provider_name, api_key, base_url)
+        provider = get_provider(provider_name, api_key, base_url, model_name)
         provider.test_connection()
         
         # Save to session (signed cookie)
@@ -131,6 +132,8 @@ def connect_provider():
         session["ai_api_key"] = api_key
         if base_url:
             session["ai_base_url"] = base_url
+        if model_name:
+            session["ai_model_name"] = model_name
             
         return jsonify({"success": True, "provider": provider_name})
     except ValueError as e:
@@ -145,6 +148,7 @@ def disconnect_provider():
     session.pop("ai_provider", None)
     session.pop("ai_api_key", None)
     session.pop("ai_base_url", None)
+    session.pop("ai_model_name", None)
     return jsonify({"success": True})
 
 
@@ -154,6 +158,7 @@ def extract():
     provider_name = session.get("ai_provider")
     api_key = session.get("ai_api_key")
     base_url = session.get("ai_base_url")
+    model_name = session.get("ai_model_name")
     
     if not provider_name or not api_key:
         return jsonify({
@@ -181,7 +186,7 @@ def extract():
         return jsonify({"success": False, "error": "File is empty."}), 400
 
     try:
-        provider = get_provider(provider_name, api_key, base_url)
+        provider = get_provider(provider_name, api_key, base_url, model_name)
         result = provider.analyze(image_bytes, mime_type, EXTRACTION_PROMPT)
         return jsonify({"success": True, "data": result})
 
@@ -288,6 +293,7 @@ def search_documents():
     provider_name = session.get("ai_provider")
     api_key = session.get("ai_api_key")
     base_url = session.get("ai_base_url")
+    model_name = session.get("ai_model_name")
 
     if not provider_name or not api_key:
         return jsonify({"success": False, "error": "No AI Provider connected. Please connect one in settings."}), 401
@@ -315,7 +321,7 @@ def search_documents():
     )
 
     try:
-        provider = get_provider(provider_name, api_key, base_url)
+        provider = get_provider(provider_name, api_key, base_url, model_name)
         answer = provider.chat(prompt)
         return jsonify({"success": True, "answer": answer})
     except Exception as e:

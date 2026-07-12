@@ -637,6 +637,8 @@ function saveProvider() {
   const provider = document.getElementById("providerSelect").value;
   const apiKey = document.getElementById("apiKeyInput").value.trim();
   const baseUrl = document.getElementById("baseUrlInput").value.trim();
+  const modelNameInput = document.getElementById("modelNameInput");
+  const modelName = modelNameInput ? modelNameInput.value.trim() : "";
   const fb = document.getElementById("settingsFeedback");
   const btn = document.getElementById("saveProviderBtn");
 
@@ -658,7 +660,7 @@ function saveProvider() {
   fetch("/api/connect", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl }),
+    body: JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl, model_name: modelName }),
   })
     .then(r => r.json())
     .then(json => {
