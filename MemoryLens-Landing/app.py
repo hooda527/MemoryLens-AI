@@ -139,7 +139,13 @@ def connect_provider():
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except requests.exceptions.HTTPError as e:
-        return jsonify({"success": False, "error": f"API Key rejected by provider (HTTP {e.response.status_code})"}), 400
+        # e.args[0] contains the real message we set in _check_response
+        msg = str(e.args[0]) if e.args else "API key rejected by provider"
+        return jsonify({"success": False, "error": f"❌ {msg}"}), 400
+    except requests.exceptions.ConnectionError:
+        return jsonify({"success": False, "error": "Network error — could not reach the AI provider. Check your internet connection."}), 500
+    except requests.exceptions.Timeout:
+        return jsonify({"success": False, "error": "Connection timed out. Provider may be busy, try again."}), 500
     except Exception as e:
         return jsonify({"success": False, "error": f"Failed to connect: {str(e)}"}), 500
 

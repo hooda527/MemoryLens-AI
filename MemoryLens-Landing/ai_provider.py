@@ -25,10 +25,14 @@ def strip_fences(text: str) -> str:
     return text.strip()
 
 class GeminiProvider(ExtractionProvider):
+    GEMINI_DEFAULT_MODEL = "gemini-2.0-flash"
+
+    def _get_model(self):
+        return self.model_name or self.GEMINI_DEFAULT_MODEL
+
     def analyze(self, image_bytes: bytes, mime_type: str, prompt: str) -> dict:
         b64 = base64.b64encode(image_bytes).decode("utf-8")
-        model = self.model_name or "gemini-1.5-flash"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._get_model()}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{
                 "parts": [
@@ -39,26 +43,35 @@ class GeminiProvider(ExtractionProvider):
             "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
         }
         resp = requests.post(url, json=payload, timeout=45)
-        resp.raise_for_status()
+        self._check_response(resp)
         data = resp.json()
         raw = data["candidates"][0]["content"]["parts"][0]["text"]
         return json.loads(strip_fences(raw))
 
     def chat(self, prompt: str) -> str:
-        model = self.model_name or "gemini-1.5-flash"
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._get_model()}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.5, "maxOutputTokens": 2048}
         }
         resp = requests.post(url, json=payload, timeout=30)
-        resp.raise_for_status()
+        self._check_response(resp)
         return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
+    def _check_response(self, resp):
+        """Raise HTTPError with the real Google error message."""
+        if not resp.ok:
+            try:
+                msg = resp.json()["error"]["message"]
+            except Exception:
+                msg = f"HTTP {resp.status_code}"
+            raise requests.exceptions.HTTPError(msg, response=resp)
+
     def test_connection(self) -> bool:
+        """Use models list endpoint — fast, lightweight, properly rejects bad keys."""
         url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
         resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
+        self._check_response(resp)
         return True
 
 class OpenAIProvider(ExtractionProvider):

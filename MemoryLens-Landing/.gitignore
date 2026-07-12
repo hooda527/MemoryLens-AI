@@ -1,7 +1,8 @@
 .env
 __pycache__/
 *.pyc
-data/
+data/*
+!data/.gitkeep
 static/uploads/*
 !static/uploads/.gitkeep
 venv/
