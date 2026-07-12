@@ -1,0 +1,10 @@
+{
+  "provider": "gemini",
+  "gemini_key": "YOUR_GEMINI_API_KEY",
+  "openai_key": "",
+  "groq_key": "",
+  "groq_model": "meta-llama/llama-4-scout-17b-16e-instruct",
+  "custom_url": "",
+  "custom_model": "",
+  "custom_key": ""
+}

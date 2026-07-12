@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MemoryLens AI — Your AI-powered document memory. Upload any document, extract key fields with Gemini AI, and never miss a deadline.">
+  <title>MemoryLens AI — AI Document Intelligence</title>
+
+  <!-- Favicon (brain emoji SVG) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <style>
+    /* Extra inline tokens */
+    .badge-dot {
+      width: 7px; height: 7px; background: #4ade80;
+      border-radius: 50%; flex-shrink: 0;
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
+      50%     { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+    }
+    .feature-status-live {
+      font-size: 0.7rem; color: #4ade80;
+      font-weight: 700; margin-top: 6px;
+    }
+    .api-warning {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: #fcd34d; border-radius: 8px;
+      padding: 6px 14px; font-size: 0.82rem; font-weight: 600;
+      margin-top: 10px;
+    }
+    .api-success {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.3);
+      color: #86efac; border-radius: 8px;
+      padding: 6px 14px; font-size: 0.82rem; font-weight: 600;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     NAV
+══════════════════════════════════════ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="logo">🧠 MemoryLens AI</div>
+    <div class="nav-links">
+      <a href="#upload">Try It</a>
+      <a href="#reminders">Reminders</a>
+      <a href="#features">Features</a>
+      <a href="#" onclick="openSettingsModal(); return false;" style="color: #a5b4fc;">⚙️ Settings</a>
+    </div>
+    <button class="nav-cta"
+            onclick="document.getElementById('upload').scrollIntoView({behavior:'smooth'})">
+      Upload Document
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     HERO
+══════════════════════════════════════ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+
+  <!-- Text content -->
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="badge-dot"></span>
+      Powered by Gemini 1.5 Flash
+    </div>
+    <h1 class="hero-title">Your AI-Powered<br>Document Memory</h1>
+    <p class="hero-sub">
+      Upload any document. MemoryLens AI reads, understands, and extracts
+      every key field — powered by real AI, zero guesswork. Connect your own
+      API key securely in settings to get started.
+    </p>
+
+    <!-- Cycling Search Bar -->
+    <div class="search-wrap">
+      <input type="text" class="search-bar" id="searchBar"
+             placeholder="Find my electricity bill..." readonly>
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <!-- Sphere + Floating Cards -->
+  <div class="sphere-section" id="sphereSection">
+
+    <!-- SVG overlay for animated connecting lines -->
+    <svg id="svgLines" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lineGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="rgba(99,102,241,0.75)"/>
+          <stop offset="100%" stop-color="rgba(99,102,241,0)"/>
+        </linearGradient>
+        <linearGradient id="lineGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="rgba(168,85,247,0.65)"/>
+          <stop offset="100%" stop-color="rgba(168,85,247,0)"/>
+        </linearGradient>
+      </defs>
+    </svg>
+
+    <!-- Orbital rings -->
+    <div class="sphere-ring ring-1"></div>
+    <div class="sphere-ring ring-2"></div>
+    <div class="sphere-ring ring-3"></div>
+
+    <!-- Neural sphere canvas -->
+    <canvas id="sphereCanvas" width="480" height="480"></canvas>
+
+    <!-- Floating document cards -->
+    <div class="doc-card card-1" style="animation-delay:0s">
+      <div class="doc-card-glow"></div>
+      <span class="doc-card-icon">💸</span>
+      <div class="doc-card-title">Electricity Bill</div>
+      <div class="doc-card-sub">Due: Aug 15 · $127.40</div>
+    </div>
+
+    <div class="doc-card card-2" style="animation-delay:0.9s">
+      <div class="doc-card-glow"></div>
+      <span class="doc-card-icon">💊</span>
+      <div class="doc-card-title">Prescription</div>
+      <div class="doc-card-sub">Exp: Sep 2024 · Dr. Sharma</div>
+    </div>
+
+    <div class="doc-card card-3" style="animation-delay:1.8s">
+      <div class="doc-card-glow"></div>
+      <span class="doc-card-icon">🎫</span>
+      <div class="doc-card-title">Concert Ticket</div>
+      <div class="doc-card-sub">Nov 20 · Row C Seat 14</div>
+    </div>
+
+    <div class="doc-card card-4" style="animation-delay:2.7s">
+      <div class="doc-card-glow"></div>
+      <span class="doc-card-icon">📋</span>
+      <div class="doc-card-title">Exam Notice</div>
+      <div class="doc-card-sub">Dec 10 · Hall B · Chemistry</div>
+    </div>
+
+    <div class="doc-card card-5" style="animation-delay:0.4s">
+      <div class="doc-card-glow"></div>
+      <span class="doc-card-icon">🧾</span>
+      <div class="doc-card-title">Receipt</div>
+      <div class="doc-card-sub">Jul 08 · $43.80</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     AI UPLOAD SECTION  (WORKING)
+══════════════════════════════════════ -->
+<section class="section" id="upload">
+  <h2 class="section-title">🤖 AI Understanding</h2>
+  <p class="section-sub">
+    Drop any document image below. The AI reads it and extracts all key fields —
+    or clearly marks what it couldn't find. No hardcoded data, ever.
+    {% if connected_provider %}
+    <br>
+    <span class="api-success">
+      <span class="badge-dot"></span> Using: {{ connected_provider | title }}
+    </span>
+    {% else %}
+    <br>
+    <span class="api-warning">
+      ⚠ Connect an AI provider in Settings to start analyzing documents.
+    </span>
+    {% endif %}
+  </p>
+
+  <div class="upload-area" id="uploadAreaContainer" {% if not connected_provider %}style="opacity: 0.4; pointer-events: none;"{% endif %}>
+    <!-- Drop zone -->
+    <div>
+      <div class="dropzone" id="dropzone">
+        <span class="dropzone-icon">📄</span>
+        <div class="dropzone-title">Drop your document here</div>
+        <div class="dropzone-sub">PNG · JPG · WEBP · GIF · BMP</div>
+        <button class="upload-btn" id="uploadBtn" type="button">Choose File</button>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+      </div>
+
+      <!-- Uploaded image preview -->
+      <div id="uploadedPreview" style="display:none; margin-top:16px; text-align:center">
+        <img id="previewImg" alt="Document preview">
+        <div id="uploadedFileName"></div>
+      </div>
+    </div>
+
+    <!-- Result panel -->
+    <div class="result-panel" id="resultPanel">
+      <div class="result-empty">
+        <div>🔬</div>
+        <div style="font-weight:600; font-size:1rem">AI Extraction Results</div>
+        <div style="font-size:0.85rem; margin-top:6px">
+          Upload a document to see real extracted fields appear here
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     REMINDERS  (WORKING — SQLite backed)
+══════════════════════════════════════ -->
+<section class="reminders-section" id="reminders">
+  <h2 class="section-title">🔔 Smart Reminders</h2>
+  <p class="section-sub">
+    Reminders you save from extracted document dates are stored in SQLite.
+    Reload the page — they're still here. Only real data, no placeholders.
+  </p>
+
+  <div id="remindersList" class="reminders-list">
+    {% if reminders %}
+      {% for r in reminders %}
+      <div class="reminder-card" data-id="{{ r.id }}">
+        <button class="reminder-delete"
+                onclick="deleteReminder('{{ r.id }}')"
+                title="Delete reminder">✕</button>
+        <div class="reminder-type">{{ r.document_type or 'document' }}</div>
+        <div class="reminder-title">{{ r.document_title }}</div>
+        <div class="reminder-date-display">{{ r.reminder_date }}</div>
+        {% if r.note %}
+        <div class="reminder-note">{{ r.note }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="reminder-empty">
+        <div>🔔</div>
+        <div style="font-weight:600">No reminders yet</div>
+        <div style="font-size:0.85rem; margin-top:6px">
+          Extract a document with a date field to set your first reminder
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FEATURES STRIP  (visual only)
+══════════════════════════════════════ -->
+<section class="features-section" id="features">
+  <div class="features-header">
+    <h2 class="section-title">Everything Your Documents Need</h2>
+    <p class="section-sub">
+      Two features are live today. Hover the others to see what's coming next.
+    </p>
+  </div>
+
+  <div class="features-grid">
+
+    <!-- ── LIVE ── -->
+    <div class="feature-badge active" title="Fully functional — try it above">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">🤖</div>
+      <div class="feature-label">AI Understanding</div>
+      <div class="feature-status-live">● Live</div>
+    </div>
+
+    <div class="feature-badge active" title="Fully functional — try it above">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#0891b2,#06b6d4)">🔔</div>
+      <div class="feature-label">Smart Reminders</div>
+      <div class="feature-status-live">● Live</div>
+    </div>
+
+    <!-- ── COMING SOON (visual only) ── -->
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#059669,#10b981)">🔍</div>
+      <div class="feature-label">Semantic Search</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#d97706,#f59e0b)">📖</div>
+      <div class="feature-label">OCR Engine</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">📅</div>
+      <div class="feature-label">Timeline View</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#be185d,#ec4899)">🕸️</div>
+      <div class="feature-label">Memory Graph</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#b45309,#d97706)">💰</div>
+      <div class="feature-label">Expense Tracking</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#1d4ed8,#3b82f6)">🗓️</div>
+      <div class="feature-label">Calendar Sync</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#0f766e,#14b8a6)">🏥</div>
+      <div class="feature-label">Health Insights</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#7e22ce,#9333ea)">✈️</div>
+      <div class="feature-label">Travel Assistant</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#0369a1,#0ea5e9)">🧠</div>
+      <div class="feature-label">Doc Intelligence</div>
+    </div>
+
+    <div class="feature-badge" title="Coming Soon — not yet implemented">
+      <div class="feature-icon-bg"
+           style="background:linear-gradient(135deg,#4d7c0f,#65a30d)">⚡</div>
+      <div class="feature-label">Instant Categorization</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════
+     FOOTER
+══════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-logo">🧠 MemoryLens AI</div>
+  <div>Built with Flask + Gemini 1.5 Flash API</div>
+  <div>API keys stored locally · Never sent to third parties</div>
+</footer>
+
+<!-- ══════════════════════════════════════
+     SETTINGS MODAL
+══════════════════════════════════════ -->
+<div id="settingsModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>⚙️ Connect AI Provider</h3>
+      <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Select Provider</label>
+        <select id="providerSelect" class="form-input" onchange="handleProviderChange()">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="groq">Groq</option>
+          <option value="custom">Custom Endpoint</option>
+        </select>
+      </div>
+      
+      <div class="form-group" id="baseUrlGroup" style="display:none;">
+        <label>Base URL</label>
+        <input type="url" id="baseUrlInput" class="form-input" placeholder="https://api.example.com/v1">
+      </div>
+      
+      <div class="form-group">
+        <label>API Key</label>
+        <div class="password-wrapper" style="display: flex; gap: 8px;">
+          <input type="password" id="apiKeyInput" class="form-input" style="flex: 1;" placeholder="Paste your API key here">
+          <button type="button" class="btn-secondary" onclick="togglePassword()">👁️</button>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--muted); margin-top: 6px;">
+          Key is stored in your secure browser session only.
+        </div>
+      </div>
+      
+      <div id="settingsFeedback"></div>
+      
+      <div class="modal-actions" style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
+        {% if connected_provider %}
+        <button class="btn-secondary" onclick="disconnectProvider()">Disconnect</button>
+        {% endif %}
+        <button class="btn-primary" id="saveProviderBtn" onclick="saveProvider()">Test & Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>

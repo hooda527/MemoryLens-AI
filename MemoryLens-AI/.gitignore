@@ -1,0 +1,32 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+doc/api/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets & Keys — NEVER COMMIT THESE
+.env
+*.env
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+lib/firebase_options.dart
+*.key
+*.pem
+*.p12
+secrets/
+
+# Dart-generated
+*.g.dart
+*.freezed.dart
