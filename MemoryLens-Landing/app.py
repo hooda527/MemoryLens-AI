@@ -25,11 +25,18 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB limit
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
 
 # ── Paths ────────────────────────────────────────────────────────────────────
-UPLOAD_FOLDER = Path("static/uploads")
-UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+# On Vercel, the filesystem is read-only except /tmp
+IS_VERCEL = os.getenv("VERCEL") == "1"
 
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
+if IS_VERCEL:
+    UPLOAD_FOLDER = Path("/tmp/uploads")
+    DATA_DIR = Path("/tmp")
+else:
+    UPLOAD_FOLDER = Path("static/uploads")
+    DATA_DIR = Path("data")
+    DATA_DIR.mkdir(exist_ok=True)
+
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "memorylens.db"
 
 ALLOWED_MIME = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif", "image/bmp"}
