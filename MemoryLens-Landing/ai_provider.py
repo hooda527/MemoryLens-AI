@@ -25,7 +25,7 @@ def strip_fences(text: str) -> str:
     return text.strip()
 
 class GeminiProvider(ExtractionProvider):
-    GEMINI_DEFAULT_MODEL = "gemini-2.0-flash"
+    GEMINI_DEFAULT_MODEL = "gemini-1.5-flash"
 
     def _get_model(self):
         return self.model_name or self.GEMINI_DEFAULT_MODEL
@@ -40,12 +40,29 @@ class GeminiProvider(ExtractionProvider):
                     {"inline_data": {"mime_type": mime_type, "data": b64}}
                 ]
             }],
-            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
+            "safetySettings": [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+            ],
+            "generationConfig": {
+                "temperature": 0.1, 
+                "maxOutputTokens": 2048,
+                "responseMimeType": "application/json"
+            }
         }
         resp = requests.post(url, json=payload, timeout=45)
         self._check_response(resp)
         data = resp.json()
-        raw = data["candidates"][0]["content"]["parts"][0]["text"]
+        
+        # Check if content was blocked
+        candidate = data.get("candidates", [{}])[0]
+        if "content" not in candidate:
+            finish_reason = candidate.get("finishReason", "UNKNOWN")
+            raise ValueError(f"Provider blocked the response (Reason: {finish_reason}). Try a different image.")
+            
+        raw = candidate["content"]["parts"][0]["text"]
         return json.loads(strip_fences(raw))
 
     def chat(self, prompt: str) -> str:
