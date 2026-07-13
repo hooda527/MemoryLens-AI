@@ -296,7 +296,7 @@ function performSearch(query) {
     <div class="ocr-spinner" style="width:14px;height:14px;border-width:2px;"></div>
     Searching documents…</div>`;
 
-  fetch("/api/search", {
+  fetch("/api/search", { credentials: "same-origin", 
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ query }),
@@ -500,7 +500,7 @@ async function handleFile(file) {
   const fd = new FormData();
   fd.append("file", file);
 
-  fetch("/api/extract", { method: "POST", body: fd })
+  fetch("/api/extract", { credentials: "same-origin",  method: "POST", body: fd })
     .then(r  => r.json())
     .then(json => {
       if (json.success) renderResult(json.data, ocrText);
@@ -614,7 +614,7 @@ function handleSetReminder() {
   fb.className   = "reminder-feedback";
   fb.textContent = "Saving…";
 
-  fetch("/api/reminder", {
+  fetch("/api/reminder", { credentials: "same-origin", 
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ title, date: dateVal, document_type: type, note: noteVal }),
@@ -666,7 +666,7 @@ function loadReminders() {
   const list = document.getElementById("remindersList");
   if (!list) return;
 
-  fetch("/api/reminders")
+  fetch("/api/reminders", { credentials: "same-origin" })
     .then(r => r.json())
     .then(json => {
       const items = json.reminders || [];
@@ -697,7 +697,7 @@ function loadReminders() {
 }
 
 function deleteReminder(id) {
-  fetch(`/api/reminder/${id}`, { method: "DELETE" })
+  fetch(`/api/reminder/${id}`, { credentials: "same-origin",  credentials: "same-origin",  method: "DELETE" })
     .then(r => r.json())
     .then(json => { if (json.success) loadReminders(); })
     .catch(err => console.error("Delete error:", err));
@@ -768,7 +768,7 @@ function saveProvider() {
   fb.textContent = "Testing connection…";
   btn.disabled   = true;
 
-  fetch("/api/connect", {
+  fetch("/api/connect", { credentials: "same-origin", 
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ provider, api_key: apiKey, base_url: baseUrl, model_name: modelName }),
@@ -793,7 +793,7 @@ function saveProvider() {
 }
 
 function disconnectProvider() {
-  fetch("/api/disconnect", { method: "POST" })
+  fetch("/api/disconnect", { credentials: "same-origin",  method: "POST" })
     .then(() => location.reload())
     .catch(console.error);
 }
@@ -1099,7 +1099,7 @@ function doSearch() {
   const con = document.getElementById('searchPopContent');
   pop.style.display = 'block';
   con.innerHTML = '<div style="color:#94A3B8;font-size:0.82rem;display:flex;gap:8px;align-items:center;"><div style="width:14px;height:14px;border:2px solid rgba(0,200,255,0.3);border-top-color:#00C8FF;border-radius:50%;animation:spin 0.7s linear infinite;"></div>Searching…</div>';
-  fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})})
+  fetch('/api/search', { credentials: "same-origin", method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})})
     .then(r=>r.json())
     .then(d=>{
       if(d.success) con.innerHTML=`<strong style="color:#93C5FD;font-size:0.78rem;">🧠 AI:</strong><br><br><span style="font-size:0.82rem;line-height:1.6;">${d.answer.replace(/\n/g,'<br>')}</span>`;
