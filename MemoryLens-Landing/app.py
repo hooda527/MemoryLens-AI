@@ -20,7 +20,7 @@ from ai_provider import get_provider
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "static"))
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB limit
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
 
