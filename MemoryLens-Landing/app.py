@@ -6,7 +6,7 @@ Real reminder persistence via SQLite.
 All other features are visual UI only.
 """
 
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify
 import sqlite3
 import os
 import json
@@ -105,15 +105,22 @@ def get_all_reminders() -> list[dict]:
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+def _get_creds():
+    """Read AI credentials from request headers (stored in localStorage by the frontend)."""
+    provider  = request.headers.get("X-AI-Provider", "").strip()
+    api_key   = request.headers.get("X-AI-Key", "").strip()
+    base_url  = request.headers.get("X-AI-Base-Url", "").strip() or None
+    model_name = request.headers.get("X-AI-Model", "").strip() or None
+    return provider, api_key, base_url, model_name
+
+
 @app.route("/")
 def index():
     reminders = get_all_reminders()
-    connected_provider = session.get("ai_provider")
-    
     return render_template(
         "index.html",
         reminders=reminders,
-        connected_provider=connected_provider
+        connected_provider=None
     )
 
 @app.route("/hero")
@@ -122,64 +129,51 @@ def hero():
 
 @app.route("/api/connect", methods=["POST"])
 def connect_provider():
+    """Validate credentials sent in the request body — no session needed."""
     body = request.get_json(silent=True)
     if not body:
         return jsonify({"success": False, "error": "No JSON body."}), 400
-        
-    provider_name = body.get("provider")
-    api_key = body.get("api_key")
-    base_url = body.get("base_url")
-    model_name = body.get("model_name")
-    
+
+    provider_name = body.get("provider", "").strip()
+    api_key       = body.get("api_key", "").strip()
+    base_url      = body.get("base_url", "").strip() or None
+    model_name    = body.get("model_name", "").strip() or None
+
     if not provider_name or not api_key:
         return jsonify({"success": False, "error": "Provider and API Key are required."}), 400
-        
+
     try:
         provider = get_provider(provider_name, api_key, base_url, model_name)
         provider.test_connection()
-        
-        # Save to session (signed cookie)
-        session["ai_provider"] = provider_name
-        session["ai_api_key"] = api_key
-        if base_url:
-            session["ai_base_url"] = base_url
-        if model_name:
-            session["ai_model_name"] = model_name
-            
+        # Return success — frontend stores creds in localStorage
         return jsonify({"success": True, "provider": provider_name})
     except ValueError as e:
         return jsonify({"success": False, "error": str(e)}), 400
     except requests.exceptions.HTTPError as e:
-        # e.args[0] contains the real message we set in _check_response
         msg = str(e.args[0]) if e.args else "API key rejected by provider"
         return jsonify({"success": False, "error": f"❌ {msg}"}), 400
     except requests.exceptions.ConnectionError:
-        return jsonify({"success": False, "error": "Network error — could not reach the AI provider. Check your internet connection."}), 500
+        return jsonify({"success": False, "error": "Network error — could not reach the AI provider."}), 500
     except requests.exceptions.Timeout:
         return jsonify({"success": False, "error": "Connection timed out. Provider may be busy, try again."}), 500
     except Exception as e:
         return jsonify({"success": False, "error": f"Failed to connect: {str(e)}"}), 500
 
+
 @app.route("/api/disconnect", methods=["POST"])
 def disconnect_provider():
-    session.pop("ai_provider", None)
-    session.pop("ai_api_key", None)
-    session.pop("ai_base_url", None)
-    session.pop("ai_model_name", None)
+    # Frontend will clear localStorage; nothing to do server-side
     return jsonify({"success": True})
 
 
 @app.route("/api/extract", methods=["POST"])
 def extract():
     """Upload a document image → call AI Provider → return structured JSON."""
-    provider_name = session.get("ai_provider")
-    api_key = session.get("ai_api_key")
-    base_url = session.get("ai_base_url")
-    model_name = session.get("ai_model_name")
-    
+    provider_name, api_key, base_url, model_name = _get_creds()
+
     if not provider_name or not api_key:
         return jsonify({
-            "success": False, 
+            "success": False,
             "error": "No AI Provider connected. Please connect a provider in settings first."
         }), 401
 
@@ -307,10 +301,7 @@ def delete_reminder(reminder_id):
 
 @app.route("/api/search", methods=["POST"])
 def search_documents():
-    provider_name = session.get("ai_provider")
-    api_key = session.get("ai_api_key")
-    base_url = session.get("ai_base_url")
-    model_name = session.get("ai_model_name")
+    provider_name, api_key, base_url, model_name = _get_creds()
 
     if not provider_name or not api_key:
         return jsonify({"success": False, "error": "No AI Provider connected. Please connect one in settings."}), 401

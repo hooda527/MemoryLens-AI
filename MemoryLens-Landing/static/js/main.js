@@ -296,9 +296,9 @@ function performSearch(query) {
     <div class="ocr-spinner" style="width:14px;height:14px;border-width:2px;"></div>
     Searching documents…</div>`;
 
-  fetch("/api/search", { credentials: "same-origin", 
+  fetch("/api/search", { credentials: "same-origin",
     method:  "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...aiHeaders() },
     body:    JSON.stringify({ query }),
   })
     .then(r => r.json())
@@ -500,7 +500,7 @@ async function handleFile(file) {
   const fd = new FormData();
   fd.append("file", file);
 
-  fetch("/api/extract", { credentials: "same-origin",  method: "POST", body: fd })
+  fetch("/api/extract", { credentials: "same-origin", method: "POST", headers: aiHeaders(), body: fd })
     .then(r  => r.json())
     .then(json => {
       if (json.success) renderResult(json.data, ocrText);
@@ -751,6 +751,50 @@ function togglePassword() {
   input.type  = input.type === "password" ? "text" : "password";
 }
 
+
+/* ──────────────────────────────────────────────────
+   AI CREDENTIALS  (stored in localStorage, sent as
+   custom headers so Flask works on serverless Vercel)
+   ────────────────────────────────────────────────── */
+function getAICreds() {
+  return {
+    provider:  localStorage.getItem("ai_provider")  || "",
+    apiKey:    localStorage.getItem("ai_api_key")   || "",
+    baseUrl:   localStorage.getItem("ai_base_url")  || "",
+    modelName: localStorage.getItem("ai_model_name")|| "",
+  };
+}
+
+function aiHeaders() {
+  const c = getAICreds();
+  const h = {};
+  if (c.provider)  h["X-AI-Provider"]  = c.provider;
+  if (c.apiKey)    h["X-AI-Key"]       = c.apiKey;
+  if (c.baseUrl)   h["X-AI-Base-Url"]  = c.baseUrl;
+  if (c.modelName) h["X-AI-Model"]     = c.modelName;
+  return h;
+}
+
+function isAIConnected() {
+  return !!localStorage.getItem("ai_api_key");
+}
+
+function updateAIBadge() {
+  const p = localStorage.getItem("ai_provider");
+  /* try multiple possible badge selectors */
+  const badge = document.querySelector(".ai-status-badge") ||
+                document.querySelector("#aiStatusBadge") ||
+                document.querySelector(".provider-badge");
+  if (!badge) return;
+  if (p) {
+    badge.textContent = "✅ " + p.charAt(0).toUpperCase() + p.slice(1) + " Connected";
+    badge.style.color = "#34d399";
+  } else {
+    badge.textContent = "⚠ Not Connected";
+    badge.style.color = "#fbbf24";
+  }
+}
+
 function saveProvider() {
   const provider   = document.getElementById("providerSelect").value;
   const apiKey     = document.getElementById("apiKeyInput").value.trim();
@@ -777,6 +821,11 @@ function saveProvider() {
     .then(json => {
       btn.disabled = false;
       if (json.success) {
+        // Persist creds in localStorage for serverless header auth
+        localStorage.setItem("ai_provider",   provider);
+        localStorage.setItem("ai_api_key",    apiKey);
+        if (baseUrl)   localStorage.setItem("ai_base_url",   baseUrl);
+        if (modelName) localStorage.setItem("ai_model_name", modelName);
         fb.className   = "reminder-feedback ok";
         fb.textContent = `✅ Connected to ${provider}`;
         setTimeout(() => location.reload(), 1000);
@@ -793,7 +842,11 @@ function saveProvider() {
 }
 
 function disconnectProvider() {
-  fetch("/api/disconnect", { credentials: "same-origin",  method: "POST" })
+  localStorage.removeItem("ai_provider");
+  localStorage.removeItem("ai_api_key");
+  localStorage.removeItem("ai_base_url");
+  localStorage.removeItem("ai_model_name");
+  fetch("/api/disconnect", { credentials: "same-origin", method: "POST" })
     .then(() => location.reload())
     .catch(console.error);
 }
@@ -829,6 +882,7 @@ document.addEventListener("keydown", e => {
    14. INIT
    ════════════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", () => {
+  updateAIBadge();
   /* Neural sphere canvas */
   const canvas = document.getElementById("sphereCanvas");
   if (canvas) new NeuralSphere(canvas);
