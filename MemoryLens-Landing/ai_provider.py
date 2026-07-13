@@ -25,10 +25,13 @@ def strip_fences(text: str) -> str:
     return text.strip()
 
 class GeminiProvider(ExtractionProvider):
-    GEMINI_DEFAULT_MODEL = "gemini-1.5-flash"
+    GEMINI_DEFAULT_MODEL = "gemini-1.5-flash-latest"
 
     def _get_model(self):
-        return self.model_name or self.GEMINI_DEFAULT_MODEL
+        m = self.model_name or self.GEMINI_DEFAULT_MODEL
+        if m.startswith("models/"):
+            m = m[7:]
+        return m
 
     def analyze(self, image_bytes: bytes, mime_type: str, prompt: str) -> dict:
         b64 = base64.b64encode(image_bytes).decode("utf-8")
